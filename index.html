@@ -337,7 +337,7 @@
     </ol>
     <input class="key-input" type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
     <div class="key-error" id="apiKeyError">⚠ Ungültiger Key — muss mit „sk-ant-" beginnen.</div>
-    <div class="key-note">🔒 Der Key wird nur für diese Browser-Sitzung gespeichert und beim Schließen des Tabs automatisch gelöscht.</div>
+    <div class="key-note">🔒 Der Key wird dauerhaft in Ihrem Browser gespeichert und verlässt Ihren Computer nicht. Sie müssen ihn nur einmalig eingeben.</div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-primary" style="flex:1;" onclick="confirmApiKey()">✓ Speichern & starten</button>
     </div>
@@ -395,8 +395,8 @@ let currentMode = 'arztbrief';
 let extractedODSLines = [];
 
 // ─── API Key Management ───────────────────────────────────────────────────────
-function getApiKey() { return sessionStorage.getItem('ods_api_key') || ''; }
-function saveApiKey(key) { sessionStorage.setItem('ods_api_key', key); }
+function getApiKey() { return localStorage.getItem('ods_api_key') || ''; }
+function saveApiKey(key) { localStorage.setItem('ods_api_key', key); }
 
 function showApiKeyDialog() {
   document.getElementById('apiKeyOverlay').style.display = 'flex';
