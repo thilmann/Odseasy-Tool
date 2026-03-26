@@ -259,6 +259,59 @@
     body { padding: 16px; }
     .mode-tabs { flex-direction: column; }
   }
+
+  /* API Key Overlay */
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 100;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+
+  .overlay-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    max-width: 480px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .overlay-box h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .overlay-box p { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 18px; }
+
+  .overlay-box ol { font-size: 13px; color: var(--text-muted); line-height: 2; margin-bottom: 18px; padding-left: 18px; }
+  .overlay-box ol a { color: var(--accent); }
+
+  .key-input {
+    width: 100%; padding: 10px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 7px; color: var(--text);
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    margin-bottom: 8px; outline: none;
+  }
+  .key-input:focus { border-color: var(--accent); }
+
+  .key-error {
+    font-size: 12px; color: var(--accent3);
+    margin-bottom: 12px; display: none;
+  }
+
+  .key-note {
+    font-size: 11px; color: var(--text-dim);
+    margin-bottom: 16px; line-height: 1.5;
+  }
+
+  /* API Key status bar */
+  .api-key-status {
+    font-size: 12px; color: var(--text-muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 14px;
+    margin-bottom: 18px;
+    display: flex; align-items: center; gap: 6px;
+  }
 </style>
 </head>
 <body>
@@ -272,10 +325,31 @@
   </div>
 </div>
 
+<!-- API Key Overlay -->
+<div class="overlay" id="apiKeyOverlay">
+  <div class="overlay-box">
+    <h2>🔑 Anthropic API-Key einrichten</h2>
+    <p>Das Tool benötigt einen persönlichen API-Key von Anthropic, um die KI-Extraktion durchzuführen. Der Key wird nur in Ihrem Browser gespeichert und nirgendwo weitergeleitet.</p>
+    <ol>
+      <li>Gehen Sie auf <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></li>
+      <li>Links auf <strong>„API Keys"</strong> klicken</li>
+      <li><strong>„Create Key"</strong> → Key kopieren</li>
+    </ol>
+    <input class="key-input" type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+    <div class="key-error" id="apiKeyError">⚠ Ungültiger Key — muss mit „sk-ant-" beginnen.</div>
+    <div class="key-note">🔒 Der Key wird nur für diese Browser-Sitzung gespeichert und beim Schließen des Tabs automatisch gelöscht.</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="confirmApiKey()">✓ Speichern & starten</button>
+    </div>
+  </div>
+</div>
+
 <div class="privacy-note">
   <span>🔒</span>
   <span><strong>Datenschutzhinweis:</strong> Bitte nur <strong>anonymisierte</strong> Dokumente hochladen. Die Textverarbeitung erfolgt über die Anthropic API.</span>
 </div>
+
+<div class="api-key-status" id="apiKeyStatus">🔑 API-Key wird geprüft …</div>
 
 <!-- Mode selector -->
 <div class="mode-tabs">
@@ -319,6 +393,51 @@
 // ─── State ───────────────────────────────────────────────────────────────────
 let currentMode = 'arztbrief';
 let extractedODSLines = [];
+
+// ─── API Key Management ───────────────────────────────────────────────────────
+function getApiKey() { return sessionStorage.getItem('ods_api_key') || ''; }
+function saveApiKey(key) { sessionStorage.setItem('ods_api_key', key); }
+
+function showApiKeyDialog() {
+  document.getElementById('apiKeyOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('apiKeyInput').focus(), 100);
+}
+
+function hideApiKeyDialog() {
+  document.getElementById('apiKeyOverlay').style.display = 'none';
+}
+
+function confirmApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    document.getElementById('apiKeyError').style.display = 'block';
+    return;
+  }
+  document.getElementById('apiKeyError').style.display = 'none';
+  saveApiKey(key);
+  hideApiKeyDialog();
+  updateApiKeyStatus();
+}
+
+// Allow Enter key in input
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('apiKeyInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmApiKey();
+  });
+  const key = getApiKey();
+  updateApiKeyStatus();
+  if (!key) showApiKeyDialog();
+});
+
+function updateApiKeyStatus() {
+  const key = getApiKey();
+  const el = document.getElementById('apiKeyStatus');
+  if (key) {
+    el.innerHTML = `🔑 API-Key: <span style="color:var(--accent2);margin-left:4px;">aktiv (${key.substring(0,16)}…)</span><button onclick="showApiKeyDialog()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;margin-left:12px;text-decoration:underline;">ändern</button>`;
+  } else {
+    el.innerHTML = `🔑 API-Key: <span style="color:var(--accent3);margin-left:4px;">nicht gesetzt</span><button onclick="showApiKeyDialog()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;margin-left:12px;text-decoration:underline;">jetzt eingeben</button>`;
+  }
+}
 
 // ─── Mode switching ───────────────────────────────────────────────────────────
 function setMode(mode) {
@@ -417,7 +536,7 @@ JSON-Struktur (null wenn nicht vorhanden):
 }`;
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json", "x-api-key": getApiKey(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
       system, messages: [{ role: "user", content: `Arztbrief:\n\n${text}` }] })
   });
@@ -479,7 +598,7 @@ T4 Definitive Radiotherapie mit kurativer Intention`;
   }
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json", "x-api-key": getApiKey(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
       system, messages: [{ role: "user", content }] })
   });
@@ -649,6 +768,11 @@ function buildActions() {
 // ─── Main processor ───────────────────────────────────────────────────────────
 async function processFile(file) {
   if (!file) return;
+
+  if (!getApiKey()) {
+    showApiKeyDialog();
+    return;
+  }
   setStatus('processing', 'Datei wird gelesen …', file.name);
   resetResults();
 
