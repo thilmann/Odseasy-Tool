@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODSeasy Datenextraktion – Prostatakarzinomzentrum</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f78166;
+    --accent4: #d2a8ff;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --text-dim: #484f58;
+    --tag-bg: #1f3a5f;
+    --tag-border: #388bfd;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 32px 24px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 22px;
+  }
+
+  .header-icon {
+    width: 46px; height: 46px;
+    background: linear-gradient(135deg, #1a3a6e, #0f4c81);
+    border: 1px solid var(--tag-border);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+
+  .header-text h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .header-text p { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
+
+  .badge {
+    display: inline-block;
+    background: var(--tag-bg); border: 1px solid var(--tag-border);
+    color: var(--accent); font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 2px 8px; border-radius: 4px; margin-top: 6px;
+  }
+
+  /* Mode selector */
+  .mode-tabs {
+    display: flex; gap: 8px; margin-bottom: 20px;
+  }
+
+  .mode-tab {
+    flex: 1; padding: 10px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.15s; text-align: center;
+  }
+
+  .mode-tab:hover { border-color: var(--accent); color: var(--text); }
+  .mode-tab.active {
+    background: var(--tag-bg); border-color: var(--tag-border);
+    color: var(--accent);
+  }
+
+  .mode-tab .tab-icon { font-size: 16px; display: block; margin-bottom: 4px; }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px; padding: 36px 24px;
+    text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--surface);
+    margin-bottom: 20px; position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent); background: #1a2332;
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    width: 100%; height: 100%;
+  }
+
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-zone h2 { font-size: 15px; font-weight: 500; margin-bottom: 5px; }
+  .upload-zone p { color: var(--text-muted); font-size: 13px; }
+
+  .file-types { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+  .file-type-tag {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 10px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-muted);
+  }
+
+  /* Status */
+  .status-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px;
+    display: none; align-items: center; gap: 10px; margin-bottom: 20px;
+  }
+  .status-bar.visible { display: flex; }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--accent); }
+  .status-dot.processing { animation: pulse 1s infinite; background: #f0ad4e; }
+  .status-dot.done { background: var(--accent2); }
+  .status-dot.error { background: var(--accent3); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .status-text { font-size: 13px; color: var(--text-muted); flex: 1; }
+  .status-filename { font-family: 'IBM Plex Mono', monospace; color: var(--text); font-size: 12px; }
+
+  /* Results */
+  .results { display: none; }
+  .results.visible { display: block; }
+
+  /* ODSeasy output box */
+  .ods-output-box {
+    background: #0a0f14;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .ods-output-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+  }
+
+  .ods-output-title {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    text-transform: uppercase; letter-spacing: 0.3px; flex: 1;
+  }
+
+  .ods-output-subtitle {
+    font-size: 11px; color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .ods-output-content {
+    padding: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+
+  .ods-line { display: flex; gap: 12px; }
+  .ods-key { color: var(--accent); min-width: 28px; font-weight: 600; }
+  .ods-val { color: var(--text); }
+
+  /* Structured table sections */
+  .section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; margin-bottom: 14px; overflow: hidden;
+  }
+
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px; background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-icon { font-size: 14px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: 0.4px; text-transform: uppercase; flex: 1; }
+  .section-code { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); background: var(--tag-bg); padding: 2px 7px; border-radius: 4px; }
+
+  .field-grid { display: grid; grid-template-columns: 200px 1fr; }
+
+  .field-label, .field-value {
+    padding: 9px 16px; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+
+  .field-label { color: var(--text-muted); font-weight: 500; background: #11161d; border-right: 1px solid var(--border); }
+  .field-value { color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .field-value.highlight { color: var(--accent); }
+  .field-value.empty { color: var(--text-dim); font-style: italic; font-family: 'IBM Plex Sans', sans-serif; }
+
+  .field-row:last-child .field-label,
+  .field-row:last-child .field-value { border-bottom: none; }
+
+  /* Actions */
+  .actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  .btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: 7px; border: 1px solid var(--border);
+    cursor: pointer; font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: #1a3a6e; border-color: var(--tag-border); color: var(--accent); }
+  .btn-primary:hover { background: #1e4080; }
+  .btn-secondary { background: var(--surface); color: var(--text-muted); }
+  .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+  .btn-success { background: #0f3320; border-color: #238636; color: var(--accent2); }
+  .btn-success:hover { background: #133d27; }
+
+  /* Hints */
+  .hint-box {
+    background: #1a2332; border: 1px solid #1f3a5f;
+    border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 12px 16px;
+    margin-bottom: 18px; font-size: 12px;
+    color: var(--text-muted); line-height: 1.6;
+  }
+  .hint-box strong { color: var(--accent); }
+
+  .privacy-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: #1c1f1a; border: 1px solid #2a3a2a;
+    border-radius: 8px; padding: 12px 14px;
+    margin-bottom: 18px; font-size: 12px;
+    color: #7a9e7a; line-height: 1.5;
+  }
+
+  .copy-feedback {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #133d27; border: 1px solid #238636;
+    color: var(--accent2); padding: 10px 18px;
+    border-radius: 8px; font-size: 13px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .copy-feedback.show { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .field-grid { grid-template-columns: 1fr; }
+    .field-label { border-right: none; }
+    body { padding: 16px; }
+    .mode-tabs { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🔬</div>
+  <div class="header-text">
+    <h1>ODSeasy Datenextraktion</h1>
+    <p>Prostatakarzinomzentrum · KI-gestützte Dokumentenanalyse</p>
+    <span class="badge">Claude AI · Powered by Anthropic</span>
+  </div>
+</div>
+
+<div class="privacy-note">
+  <span>🔒</span>
+  <span><strong>Datenschutzhinweis:</strong> Bitte nur <strong>anonymisierte</strong> Dokumente hochladen. Die Textverarbeitung erfolgt über die Anthropic API.</span>
+</div>
+
+<!-- Mode selector -->
+<div class="mode-tabs">
+  <div class="mode-tab active" id="tab-arztbrief" onclick="setMode('arztbrief')">
+    <span class="tab-icon">📄</span>
+    Arztbrief
+    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">.docx / .txt</div>
+  </div>
+  <div class="mode-tab" id="tab-tumorboard" onclick="setMode('tumorboard')">
+    <span class="tab-icon">🏥</span>
+    Tumorboardbeschluss
+    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">PDF-Scan / Bild</div>
+  </div>
+</div>
+
+<div class="hint-box" id="hintBox">
+  <strong>Arztbrief-Modus:</strong> Word-Dokument (.docx) hochladen → KI extrahiert alle ODSeasy-Felder → strukturierte Tabelle + Importdatei.
+</div>
+
+<div class="upload-zone" id="uploadZone">
+  <input type="file" id="fileInput" accept=".docx,.doc,.txt,.pdf,.jpg,.jpeg,.png" />
+  <div class="upload-icon">📂</div>
+  <h2>Dokument hier ablegen oder klicken</h2>
+  <p>Unterstützte Formate:</p>
+  <div class="file-types" id="fileTypeList">
+    <span class="file-type-tag">.docx</span>
+    <span class="file-type-tag">.txt</span>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <div class="status-dot" id="statusDot"></div>
+  <div class="status-text" id="statusText">Bereit</div>
+  <div class="status-filename" id="statusFilename"></div>
+</div>
+
+<div class="results" id="results"></div>
+<div class="copy-feedback" id="copyFeedback"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentMode = 'arztbrief';
+let extractedODSLines = [];
+
+// ─── Mode switching ───────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('tab-arztbrief').classList.toggle('active', mode === 'arztbrief');
+  document.getElementById('tab-tumorboard').classList.toggle('active', mode === 'tumorboard');
+
+  const hints = {
+    arztbrief: '<strong>Arztbrief-Modus:</strong> Word-Dokument (.docx) hochladen → KI extrahiert alle ODSeasy-Felder → strukturierte Tabelle + Importdatei.',
+    tumorboard: '<strong>Tumorboardbeschluss-Modus:</strong> Eingescannte PDF hochladen → KI liest den Scan per OCR → fertige ODSeasy-Importdatei (.txt) zum direkten Einlesen.'
+  };
+  document.getElementById('hintBox').innerHTML = hints[mode];
+
+  const types = {
+    arztbrief: '<span class="file-type-tag">.docx</span><span class="file-type-tag">.txt</span>',
+    tumorboard: '<span class="file-type-tag">.pdf</span><span class="file-type-tag">.jpg</span><span class="file-type-tag">.png</span>'
+  };
+  document.getElementById('fileTypeList').innerHTML = types[mode];
+
+  document.getElementById('fileInput').accept = mode === 'arztbrief'
+    ? '.docx,.doc,.txt' : '.pdf,.jpg,.jpeg,.png';
+
+  resetResults();
+}
+
+// ─── File reading ─────────────────────────────────────────────────────────────
+async function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    if (file.name.match(/\.(txt)$/i)) {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target.result);
+      r.onerror = reject;
+      r.readAsText(file, 'UTF-8');
+      return;
+    }
+    if (file.name.match(/\.(docx|doc)$/i)) {
+      const r = new FileReader();
+      r.onload = async e => {
+        try { resolve(await extractDocxText(e.target.result)); }
+        catch { const r2 = new FileReader(); r2.onload = ev => resolve(ev.target.result); r2.readAsText(file); }
+      };
+      r.onerror = reject;
+      r.readAsArrayBuffer(file);
+      return;
+    }
+    reject(new Error('Unbekanntes Format'));
+  });
+}
+
+async function extractDocxText(buf) {
+  if (!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  const zip = await JSZip.loadAsync(buf);
+  const xml = await zip.file('word/document.xml').async('string');
+  return xml
+    .replace(/<w:p[ >]/g, '\n<w:p ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+    .replace(/\n{3,}/g,'\n\n').trim();
+}
+
+async function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ─── Claude API calls ─────────────────────────────────────────────────────────
+
+// Arztbrief: structured JSON extraction
+async function extractArztbrief(text) {
+  const system = `Du bist ein medizinischer Daten-Extraktor für ein Prostatakarzinomzentrum.
+Analysiere den Arztbrief und extrahiere alle relevanten Felder für ODSeasy.
+Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Backticks, ohne Preamble.
+
+JSON-Struktur (null wenn nicht vorhanden):
+{
+  "patient": { "name": "...", "geburtsdatum": "...", "patientennummer": "..." },
+  "diagnose": { "erstdiagnose_datum": "...", "diagnose": "...", "histologie": "...", "lokalisation": "...", "metastasen": "..." },
+  "staging": { "t_stadium": "...", "n_stadium": "...", "m_stadium": "...", "gleason_score": "...", "gleason_summe": "...", "isup": "...", "psa_initial": "...", "psa_datum": "...", "risikoprofil": "..." },
+  "vorbehandlung": { "biopsie_datum": "...", "biopsie_art": "...", "hormontherapie_start": "...", "hormontherapie_medikament": "...", "weitere_vorbehandlung": "..." },
+  "aktuelle_therapie": { "therapieart": "...", "intention": "...", "beginn": "...", "ende": "...", "zielvolumen_1": "...", "zv1_einzeldosis": "...", "zv1_gesamtdosis": "...", "zielvolumen_2": "...", "zv2_einzeldosis": "...", "zv2_gesamtdosis": "...", "zielvolumen_3": "...", "zv3_einzeldosis": "...", "zv3_gesamtdosis": "..." },
+  "verlauf": { "nebenwirkungen": "...", "ansprechen": "...", "komplikationen": "..." },
+  "nachsorge": { "naechster_termin": "...", "termin_uhrzeit": "...", "empfehlung": "...", "zustaendige_einrichtung": "..." },
+  "einsender": { "praxis_name": "...", "praxis_adresse": "...", "datum_brief": "..." }
+}`;
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
+      system, messages: [{ role: "user", content: `Arztbrief:\n\n${text}` }] })
+  });
+  const d = await r.json();
+  const raw = d.content.map(i => i.text||'').join('').replace(/```json|```/g,'').trim();
+  return JSON.parse(raw);
+}
+
+// Tumorboard: ODSeasy import format directly from image/PDF
+async function extractTumorboard(file) {
+  const isPDF = file.name.match(/\.pdf$/i);
+  const isImage = file.name.match(/\.(jpg|jpeg|png)$/i);
+
+  const system = `Du bist ein medizinischer OCR- und Daten-Extraktor für ein Prostatakarzinomzentrum.
+Lies den eingescannten Tumorboardbeschluss und extrahiere alle relevanten Daten.
+Gib die Ausgabe EXAKT in folgendem ODSeasy-Importformat aus, eine Zeile pro Feld, Kürzel und Wert durch ein Leerzeichen getrennt.
+Verwende NUR Kürzel für die du tatsächlich Daten gefunden hast. Kein Preamble, kein JSON, keine Erklärungen.
+
+Kürzel-Bedeutungen:
+O5 = Lokalisation
+O7 = Tumormarker (PSA-Wert mit Einheit, ggf. Zusatzinfo)
+S7 = TNM-Stadium
+E7 = Erstdiagnose (Monat/Jahr)
+F7 = Filiae / Metastasen (Beschreibung)
+G7 = Gleason-Score und ISUP (z.B. "Gleason-Score: 5+4=9, ISUP 5")
+H7 = Histologie
+B7 = Begleiterkrankungen (kommagetrennt)
+V7 = Bisheriger Krankheitsverlauf (Datum + Befund, semikolongetrennt)
+T4 = Therapieempfehlung des Tumorboards
+
+Beispiel-Ausgabe:
+O5 beidseitig
+O7 initialer PSA-Wert: 17 ng/ml
+S7 T1c cN0 cM0
+E7 11/2025
+F7 keine Filiae
+G7 Gleason-Score: 3+4=7, ISUP 2
+H7 azinäres Adenokarzinom der Prostata
+B7 Harnverhaltung, KHK
+V7 24.11.2025 Prostata-Stanzbiopsie
+T4 Definitive Radiotherapie mit kurativer Intention`;
+
+  let content;
+
+  if (isImage) {
+    const b64 = await readFileAsBase64(file);
+    const mediaType = file.name.match(/\.png$/i) ? 'image/png' : 'image/jpeg';
+    content = [
+      { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+      { type: "text", text: "Bitte extrahiere alle relevanten Daten aus diesem Tumorboardbeschluss im ODSeasy-Format." }
+    ];
+  } else if (isPDF) {
+    // For PDF: render as image using canvas via pdf.js
+    const b64 = await readFileAsBase64(file);
+    content = [
+      { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } },
+      { type: "text", text: "Bitte extrahiere alle relevanten Daten aus diesem Tumorboardbeschluss im ODSeasy-Format." }
+    ];
+  }
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
+      system, messages: [{ role: "user", content }] })
+  });
+  const d = await r.json();
+  return d.content.map(i => i.text||'').join('').trim();
+}
+
+// ─── Render: Arztbrief ────────────────────────────────────────────────────────
+function renderArztbrief(data) {
+  const sections = [
+    { icon:'👤', title:'Patient', key:'patient', fields:[['Name','name'],['Geburtsdatum','geburtsdatum'],['Patientennummer','patientennummer']] },
+    { icon:'🔬', title:'Diagnose', key:'diagnose', fields:[['Erstdiagnose','erstdiagnose_datum'],['Diagnose','diagnose'],['Histologie','histologie'],['Lokalisation','lokalisation'],['Metastasen','metastasen']] },
+    { icon:'📊', title:'Staging', key:'staging', fields:[['T-Stadium','t_stadium'],['N-Stadium','n_stadium'],['M-Stadium','m_stadium'],['Gleason-Score','gleason_score'],['ISUP','isup'],['PSA initial','psa_initial'],['PSA-Datum','psa_datum'],['Risikoprofil','risikoprofil']] },
+    { icon:'📋', title:'Vorbehandlung', key:'vorbehandlung', fields:[['Biopsie-Datum','biopsie_datum'],['Biopsie-Art','biopsie_art'],['Hormontherapie ab','hormontherapie_start'],['Medikament','hormontherapie_medikament'],['Weitere Vorbehandlung','weitere_vorbehandlung']] },
+    { icon:'⚕️', title:'Aktuelle Therapie', key:'aktuelle_therapie', fields:[['Therapieart','therapieart'],['Intention','intention'],['Beginn','beginn'],['Ende','ende'],['Zielvolumen 1','zielvolumen_1'],['ZV1 Einzeldosis','zv1_einzeldosis'],['ZV1 Gesamtdosis','zv1_gesamtdosis'],['Zielvolumen 2','zielvolumen_2'],['ZV2 Einzeldosis','zv2_einzeldosis'],['ZV2 Gesamtdosis','zv2_gesamtdosis'],['Zielvolumen 3','zielvolumen_3'],['ZV3 Einzeldosis','zv3_einzeldosis'],['ZV3 Gesamtdosis','zv3_gesamtdosis']] },
+    { icon:'📈', title:'Verlauf', key:'verlauf', fields:[['Nebenwirkungen','nebenwirkungen'],['Ansprechen','ansprechen'],['Komplikationen','komplikationen']] },
+    { icon:'📅', title:'Nachsorge', key:'nachsorge', fields:[['Nächster Termin','naechster_termin'],['Uhrzeit','termin_uhrzeit'],['Empfehlung','empfehlung'],['Einrichtung','zustaendige_einrichtung']] },
+    { icon:'🏥', title:'Einsender', key:'einsender', fields:[['Praxis','praxis_name'],['Adresse','praxis_adresse'],['Datum','datum_brief']] }
+  ];
+
+  // Build ODSeasy lines from structured data
+  const keyMap = {
+    lokalisation: 'O5', psa_initial: 'O7', t_stadium: 'S7',
+    erstdiagnose_datum: 'E7', metastasen: 'F7', gleason_score: 'G7',
+    histologie: 'H7'
+  };
+
+  let odsLines = [];
+  const s = data.staging || {};
+  const d2 = data.diagnose || {};
+
+  const addLine = (code, val) => { if (val && val !== 'null') odsLines.push(`${code} ${val}`); };
+
+  addLine('O5', d2.lokalisation);
+  if (s.psa_initial) addLine('O7', `initialer PSA-Wert: ${s.psa_initial}`);
+  const tnm = [s.t_stadium, s.n_stadium, s.m_stadium].filter(Boolean).join(' ');
+  if (tnm) addLine('S7', tnm);
+  addLine('E7', d2.erstdiagnose_datum);
+  addLine('F7', d2.metastasen);
+  let g7 = s.gleason_score || '';
+  if (s.isup && s.isup !== 'null') g7 += (g7 ? ', ' : '') + `ISUP ${s.isup}`;
+  if (g7) addLine('G7', g7);
+  addLine('H7', d2.histologie);
+
+  // Bisheriger Verlauf
+  const vb = data.vorbehandlung || {};
+  let v7parts = [];
+  if (vb.biopsie_datum && vb.biopsie_datum !== 'null') v7parts.push(`${vb.biopsie_datum} ${vb.biopsie_art || 'Biopsie'}`);
+  if (vb.hormontherapie_start && vb.hormontherapie_start !== 'null') v7parts.push(`ab ${vb.hormontherapie_start} ${vb.hormontherapie_medikament || 'Hormontherapie'}`);
+  if (v7parts.length) addLine('V7', v7parts.join('; '));
+
+  // Therapieempfehlung aus aktueller Therapie
+  const at = data.aktuelle_therapie || {};
+  let t4 = [at.therapieart, at.intention].filter(v => v && v !== 'null').join(', ');
+  if (t4) addLine('T4', t4);
+
+  extractedODSLines = odsLines;
+
+  let html = '';
+
+  // ODSeasy output box
+  html += `<div class="ods-output-box">
+    <div class="ods-output-header">
+      <span>📤</span>
+      <span class="ods-output-title">ODSeasy Importdatei</span>
+      <span class="ods-output-subtitle">${odsLines.length} Felder extrahiert</span>
+    </div>
+    <div class="ods-output-content">`;
+
+  odsLines.forEach(line => {
+    const sp = line.indexOf(' ');
+    const key = line.substring(0, sp);
+    const val = line.substring(sp+1);
+    html += `<div class="ods-line"><span class="ods-key">${key}</span><span class="ods-val">${escHtml(val)}</span></div>`;
+  });
+
+  html += `</div></div>`;
+
+  // Detailed sections
+  sections.forEach(sec => {
+    const sd = data[sec.key] || {};
+    const filled = sec.fields.filter(([,k]) => sd[k] && sd[k] !== 'null').length;
+    html += `<div class="section"><div class="section-header">
+      <span class="section-icon">${sec.icon}</span>
+      <span class="section-title">${sec.title}</span>
+      <span class="section-code">${filled}/${sec.fields.length}</span>
+    </div><div class="field-grid">`;
+    sec.fields.forEach(([label, key]) => {
+      const val = sd[key];
+      const empty = !val || val === 'null';
+      html += `<div class="field-row">
+        <div class="field-label">${label}</div>
+        <div class="field-value ${empty?'empty':''}">${empty ? '—' : escHtml(val)}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += buildActions();
+  document.getElementById('results').innerHTML = html;
+  document.getElementById('results').classList.add('visible');
+}
+
+// ─── Render: Tumorboard ───────────────────────────────────────────────────────
+const KUERZEL_LABELS = {
+  O5:'Lokalisation', O7:'Tumormarker (PSA)',
+  S7:'TNM-Stadium', E7:'Erstdiagnose',
+  F7:'Filiae / Metastasen', G7:'Gleason / ISUP',
+  H7:'Histologie', B7:'Begleiterkrankungen',
+  V7:'Bisheriger Verlauf', T4:'Therapieempfehlung'
+};
+
+function renderTumorboard(odsText) {
+  const lines = odsText.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+  extractedODSLines = lines;
+
+  let html = `<div class="ods-output-box">
+    <div class="ods-output-header">
+      <span>📤</span>
+      <span class="ods-output-title">ODSeasy Importdatei</span>
+      <span class="ods-output-subtitle">${lines.length} Felder extrahiert</span>
+    </div>
+    <div class="ods-output-content">`;
+
+  lines.forEach(line => {
+    const sp = line.indexOf(' ');
+    const key = line.substring(0, sp);
+    const val = line.substring(sp+1);
+    html += `<div class="ods-line"><span class="ods-key">${key}</span><span class="ods-val">${escHtml(val)}</span></div>`;
+  });
+
+  html += `</div></div>`;
+
+  // Structured view
+  html += `<div class="section"><div class="section-header">
+    <span class="section-icon">📋</span>
+    <span class="section-title">Detailansicht</span>
+    <span class="section-code">${lines.length} Felder</span>
+  </div><div class="field-grid">`;
+
+  lines.forEach(line => {
+    const sp = line.indexOf(' ');
+    const key = line.substring(0, sp);
+    const val = line.substring(sp+1);
+    const label = KUERZEL_LABELS[key] || key;
+    html += `<div class="field-row">
+      <div class="field-label">${escHtml(label)}</div>
+      <div class="field-value">${escHtml(val)}</div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  html += buildActions();
+
+  document.getElementById('results').innerHTML = html;
+  document.getElementById('results').classList.add('visible');
+}
+
+function buildActions() {
+  return `<div class="actions">
+    <button class="btn btn-success" onclick="downloadTxt()">⬇ Importdatei (.txt) speichern</button>
+    <button class="btn btn-primary" onclick="copyODS()">📋 In Zwischenablage kopieren</button>
+    <button class="btn btn-secondary" onclick="resetResults()">🔄 Neues Dokument</button>
+  </div>`;
+}
+
+// ─── Main processor ───────────────────────────────────────────────────────────
+async function processFile(file) {
+  if (!file) return;
+  setStatus('processing', 'Datei wird gelesen …', file.name);
+  resetResults();
+
+  try {
+    if (currentMode === 'arztbrief') {
+      const text = await readFileAsText(file);
+      if (!text || text.trim().length < 50) {
+        setStatus('error', 'Datei konnte nicht gelesen werden oder ist leer.', file.name); return;
+      }
+      setStatus('processing', 'KI analysiert den Arztbrief …', file.name);
+      const data = await extractArztbrief(text);
+      setStatus('done', 'Extraktion abgeschlossen.', file.name);
+      renderArztbrief(data);
+
+    } else {
+      setStatus('processing', 'KI liest den eingescannten Beschluss …', file.name);
+      const odsText = await extractTumorboard(file);
+      setStatus('done', 'Extraktion abgeschlossen.', file.name);
+      renderTumorboard(odsText);
+    }
+  } catch(err) {
+    console.error(err);
+    setStatus('error', 'Fehler: ' + err.message, file.name);
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function downloadTxt() {
+  const content = extractedODSLines.join('\n');
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ODSeasy_Import_${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showFeedback('✓ Datei heruntergeladen');
+}
+
+function copyODS() {
+  navigator.clipboard.writeText(extractedODSLines.join('\n'))
+    .then(() => showFeedback('✓ In Zwischenablage kopiert'));
+}
+
+function showFeedback(msg) {
+  const el = document.getElementById('copyFeedback');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function setStatus(type, text, filename) {
+  const bar = document.getElementById('statusBar');
+  bar.classList.add('visible');
+  document.getElementById('statusDot').className = 'status-dot ' + type;
+  document.getElementById('statusText').textContent = text;
+  document.getElementById('statusFilename').textContent = filename || '';
+}
+
+function resetResults() {
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('results').innerHTML = '';
+  extractedODSLines = [];
+}
+
+function escHtml(t) {
+  return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Event listeners ──────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+</script>
+</body>
+</html>
