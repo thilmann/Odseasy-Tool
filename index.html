@@ -537,10 +537,12 @@ JSON-Struktur (null wenn nicht vorhanden):
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST", headers: { "Content-Type": "application/json", "x-api-key": getApiKey(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
+    body: JSON.stringify({ model: "claude-sonnet-4-5-20251001", max_tokens: 2000,
       system, messages: [{ role: "user", content: `Arztbrief:\n\n${text}` }] })
   });
   const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  if (!d.content) throw new Error('Keine Antwort von der API erhalten. Bitte API-Key prüfen.');
   const raw = d.content.map(i => i.text||'').join('').replace(/```json|```/g,'').trim();
   return JSON.parse(raw);
 }
@@ -599,10 +601,12 @@ T4 Definitive Radiotherapie mit kurativer Intention`;
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST", headers: { "Content-Type": "application/json", "x-api-key": getApiKey(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000,
+    body: JSON.stringify({ model: "claude-sonnet-4-5-20251001", max_tokens: 2000,
       system, messages: [{ role: "user", content }] })
   });
   const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  if (!d.content) throw new Error('Keine Antwort von der API erhalten. Bitte API-Key prüfen.');
   return d.content.map(i => i.text||'').join('').trim();
 }
 
